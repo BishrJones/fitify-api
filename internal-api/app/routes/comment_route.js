@@ -18,20 +18,46 @@ router.post('/comments/:workoutId', requireToken, (req,res, next) => {
     req.body.comment.owner = req.user.id
     //get our workoutId from req.params.id
     const workoutId = req.params.workoutId
-    //find the adventure
+    //find the workout
     Workout.findById(workoutId)
         .then(handle404)
     //push the comment to the comments array
         .then(workout => {
-            console.log('this is the adventure', workout)
+            console.log('this is the workout', workout)
             console.log('this is the comment', comment)
             workout.comments.push(comment)
-            //save the adventure
+            //save the workout
             return workout.save()
         })
-    //then we send the adventure as json
+    //then we send the workout as json
         .then(workout => res.status(201).json({workout: workout}))
     //catch errors and send to the handler
         .catch(next)
 })
 
+// DELETE/REMOVE route -> deletes the comment
+router.delete('/comments/:workoutId/:commId', requireToken, (req,res, next) => {
+    // saving both ids to variables for easy ref later
+    const commId = req.params.commId
+    const workoutId = req.params.workoutId
+    // find the pet in the db
+    Workout.findById(workoutId)
+       .populate('comments.owner')
+        // if pet not found throw 404
+        .then(handle404)
+        .then(workout => {
+            // get the specific subdocument by its id
+            const theComment = workout.comments.id(commId)
+            console.log('this is the comment', theComment)
+            // require that the deleter is the owner of the comment
+            requireOwnership(req, theComment)
+            // call remove on the toy we got on the line above requireOwnership
+            theComment.remove()
+
+            // return the saved pet
+            return workout.save()
+        })
+        // send 204 no content
+        .then(() => res.sendStatus(204))
+        .catch(next)
+})
